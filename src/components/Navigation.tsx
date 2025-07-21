@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dumbbell, Calendar, TrendingUp, Settings } from 'lucide-react';
+import { Dumbbell, Calendar, TrendingUp, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface NavigationProps {
@@ -12,6 +12,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }
     { id: 'workout', label: 'Workout', icon: Dumbbell },
     { id: 'history', label: 'History', icon: Calendar },
     { id: 'progress', label: 'Progress', icon: TrendingUp },
+    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
