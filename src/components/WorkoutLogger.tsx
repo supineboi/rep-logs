@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Plus, Clock, Target, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Clock, Target } from "lucide-react";
 import { ExerciseSelector } from './ExerciseSelector';
 import { SetLogger } from './SetLogger';
-import { useWorkoutStore } from '@/lib/store';
+import { useWorkouts } from '@/hooks/useWorkouts';
+import { toast } from 'sonner';
 
 interface Exercise {
   id: string;
@@ -23,7 +24,8 @@ export const WorkoutLogger = () => {
   const [currentWorkout, setCurrentWorkout] = useState<Exercise[]>([]);
   const [isExerciseSelectorOpen, setIsExerciseSelectorOpen] = useState(false);
   const [workoutStartTime] = useState(new Date());
-  const { addWorkout } = useWorkoutStore();
+  const [saving, setSaving] = useState(false);
+  const { saveWorkout } = useWorkouts();
 
   const addExercise = (exerciseName: string) => {
     const newExercise: Exercise = {
@@ -68,15 +70,33 @@ export const WorkoutLogger = () => {
     );
   };
 
-  const finishWorkout = () => {
-    if (currentWorkout.length > 0) {
-      addWorkout({
-        id: Date.now().toString(),
-        date: new Date(),
-        exercises: currentWorkout,
-        duration: Math.floor((Date.now() - workoutStartTime.getTime()) / 1000 / 60)
-      });
+  const finishWorkout = async () => {
+    if (currentWorkout.length === 0) return;
+    
+    setSaving(true);
+    try {
+      const duration = Math.round((Date.now() - workoutStartTime.getTime()) / 1000 / 60); // Convert to minutes
+      
+      const workoutData = {
+        duration,
+        exercises: currentWorkout.map(exercise => ({
+          name: exercise.name,
+          sets: exercise.sets.map(set => ({
+            reps: set.reps,
+            weight: set.weight,
+            notes: set.notes,
+            completed: set.completed
+          }))
+        }))
+      };
+      
+      await saveWorkout(workoutData);
       setCurrentWorkout([]);
+      toast.success('Workout saved successfully!');
+    } catch (error: any) {
+      toast.error('Failed to save workout: ' + error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -97,99 +117,96 @@ export const WorkoutLogger = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-4 pb-20">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-gradient-subtle/95 backdrop-blur-sm pb-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Current Workout</h1>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                <span>{getWorkoutDuration()}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Target className="w-4 h-4" />
-                <span>{completedSets}/{totalSets} sets</span>
-              </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              <span>{getWorkoutDuration()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Target className="w-4 h-4" />
+              <span>{completedSets}/{totalSets} sets</span>
             </div>
           </div>
-          
-          {currentWorkout.length > 0 && (
-            <Button 
-              variant="success" 
-              size="touch"
-              onClick={finishWorkout}
-              className="shadow-accent"
-            >
-              Finish Workout
-            </Button>
-          )}
         </div>
-
-        {/* Add Exercise Button */}
-        <Button
-          variant="workout"
-          size="xl"
-          onClick={() => setIsExerciseSelectorOpen(true)}
-          className="w-full"
-        >
-          <Plus className="w-5 h-5" />
-          Add Exercise
-        </Button>
+        
+        {currentWorkout.length > 0 && (
+          <Button 
+            onClick={finishWorkout} 
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Finish Workout'}
+          </Button>
+        )}
       </div>
+
+      {/* Add Exercise Button */}
+      <Button
+        variant="outline"
+        size="lg"
+        onClick={() => setIsExerciseSelectorOpen(true)}
+        className="w-full"
+      >
+        <Plus className="w-5 h-5 mr-2" />
+        Add Exercise
+      </Button>
 
       {/* Exercise List */}
       <div className="space-y-4">
-        {currentWorkout.map((exercise, index) => (
-          <Card key={exercise.id} className="p-4 shadow-soft animate-fade-in">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-foreground">{exercise.name}</h3>
-              <Button
-                variant="workout"
-                size="sm"
-                onClick={() => addSet(exercise.id)}
-                className="text-xs"
-              >
-                <Plus className="w-3 h-3" />
-                Add Set
-              </Button>
-            </div>
-
-            {exercise.sets.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Target className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Tap "Add Set" to start logging</p>
+        {currentWorkout.map((exercise) => (
+          <Card key={exercise.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{exercise.name}</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addSet(exercise.id)}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Set
+                </Button>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {exercise.sets.map((set, setIndex) => (
-                  <SetLogger
-                    key={set.id}
-                    set={set}
-                    setNumber={setIndex + 1}
-                    onUpdate={(updates) => updateSet(exercise.id, set.id, updates)}
-                  />
-                ))}
-              </div>
-            )}
+            </CardHeader>
+            <CardContent>
+              {exercise.sets.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Target className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Tap "Add Set" to start logging</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {exercise.sets.map((set, setIndex) => (
+                    <SetLogger
+                      key={set.id}
+                      set={set}
+                      setNumber={setIndex + 1}
+                      onUpdate={(updates) => updateSet(exercise.id, set.id, updates)}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
           </Card>
         ))}
 
         {currentWorkout.length === 0 && (
           <div className="text-center py-16">
-            <div className="bg-card rounded-lg p-8 shadow-soft">
+            <div className="bg-card rounded-lg p-8">
               <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-semibold text-foreground mb-2">Ready to Start?</h3>
               <p className="text-muted-foreground mb-6">
                 Add your first exercise to begin tracking your workout
               </p>
               <Button
-                variant="workout"
-                size="xl"
+                variant="default"
+                size="lg"
                 onClick={() => setIsExerciseSelectorOpen(true)}
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-5 h-5 mr-2" />
                 Start Workout
               </Button>
             </div>

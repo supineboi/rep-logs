@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { TrendingUp, Search, Calendar, Target } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useWorkoutStore } from '@/lib/store';
+import { Badge } from '@/components/ui/badge';
+import { useWorkouts } from '@/hooks/useWorkouts';
 
 export const ProgressTracker = () => {
-  const { workouts } = useWorkoutStore();
+  const { workouts, loading } = useWorkouts();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Get all unique exercises from workout history
@@ -26,7 +27,7 @@ export const ProgressTracker = () => {
         }
         
         const exerciseData = exerciseMap.get(exercise.name);
-        const workoutDate = typeof workout.date === 'string' ? new Date(workout.date) : workout.date;
+        const workoutDate = new Date(workout.date);
         
         exerciseData.workouts.push({
           date: workoutDate,
@@ -82,45 +83,38 @@ export const ProgressTracker = () => {
     return 'neutral';
   };
 
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground animate-pulse" />
+        <p className="text-muted-foreground">Loading progress data...</p>
+      </div>
+    );
+  }
+
   if (workouts.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-4 pb-20">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Progress Tracker</h1>
-          <p className="text-muted-foreground">Monitor your strength gains</p>
-        </div>
-
-        <div className="text-center py-16">
-          <div className="bg-card rounded-lg p-8 shadow-soft">
-            <TrendingUp className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No Progress Data</h3>
-            <p className="text-muted-foreground">
-              Complete a few workouts to start tracking your progress
-            </p>
-          </div>
-        </div>
+      <div className="text-center py-16">
+        <TrendingUp className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+        <h3 className="text-lg font-semibold text-foreground mb-2">No Progress Data</h3>
+        <p className="text-muted-foreground">
+          Complete a few workouts to start tracking your progress
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-4 pb-20">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Progress Tracker</h1>
-        <p className="text-muted-foreground">Monitor your strength gains over time</p>
-      </div>
-
+    <div className="space-y-6">
       {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search exercises..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12"
-          />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search exercises..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {/* Exercise Progress List */}
@@ -135,65 +129,67 @@ export const ProgressTracker = () => {
             const trend = getProgressTrend(exercise);
             
             return (
-              <Card key={exercise.name} className="p-4 shadow-soft">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-foreground mb-1">{exercise.name}</h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>{exercise.lastPerformed ? formatDate(exercise.lastPerformed) : 'Never'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Target className="w-4 h-4" />
-                        <span>{exercise.totalSets} total sets</span>
+              <Card key={exercise.name}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg mb-1">{exercise.name}</CardTitle>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>{exercise.lastPerformed ? formatDate(exercise.lastPerformed) : 'Never'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Target className="w-4 h-4" />
+                          <span>{exercise.totalSets} total sets</span>
+                        </div>
                       </div>
                     </div>
+                    
+                    <Badge
+                      variant={trend === 'up' ? 'default' : trend === 'down' ? 'destructive' : 'secondary'}
+                      className="flex items-center gap-1"
+                    >
+                      <TrendingUp className={`w-3 h-3 ${
+                        trend === 'down' ? 'rotate-180' : 
+                        trend === 'neutral' ? 'rotate-90' : ''
+                      }`} />
+                      {trend === 'up' ? 'Improving' : trend === 'down' ? 'Declining' : 'Stable'}
+                    </Badge>
                   </div>
-                  
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    trend === 'up' ? 'bg-success/10 text-success' :
-                    trend === 'down' ? 'bg-destructive/10 text-destructive' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
-                    <TrendingUp className={`w-3 h-3 ${
-                      trend === 'down' ? 'rotate-180' : 
-                      trend === 'neutral' ? 'rotate-90' : ''
-                    }`} />
-                    {trend === 'up' ? 'Improving' : trend === 'down' ? 'Declining' : 'Stable'}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-primary/5 rounded-lg">
-                    <div className="text-xl font-bold text-foreground">{exercise.maxWeight}</div>
-                    <div className="text-xs text-muted-foreground">Max Weight (lbs)</div>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-accent/5 rounded-lg">
-                    <div className="text-xl font-bold text-foreground">{exercise.maxReps}</div>
-                    <div className="text-xs text-muted-foreground">Max Reps</div>
-                  </div>
-                </div>
-
-                {/* Recent Performance */}
-                {exercise.workouts.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">Recent Performance</div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {exercise.workouts[0].sets.slice(0, 3).map((set: any, index: number) => (
-                        <div key={index} className="text-xs bg-secondary px-2 py-1 rounded">
-                          {set.weight}lbs × {set.reps}
-                        </div>
-                      ))}
-                      {exercise.workouts[0].sets.length > 3 && (
-                        <div className="text-xs text-muted-foreground">
-                          +{exercise.workouts[0].sets.length - 3} more
-                        </div>
-                      )}
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="text-center p-3 bg-primary/5 rounded-lg">
+                      <div className="text-xl font-bold text-foreground">{exercise.maxWeight}</div>
+                      <div className="text-xs text-muted-foreground">Max Weight (lbs)</div>
+                    </div>
+                    
+                    <div className="text-center p-3 bg-secondary/5 rounded-lg">
+                      <div className="text-xl font-bold text-foreground">{exercise.maxReps}</div>
+                      <div className="text-xs text-muted-foreground">Max Reps</div>
                     </div>
                   </div>
-                )}
+
+                  {/* Recent Performance */}
+                  {exercise.workouts.length > 0 && (
+                    <div className="pt-3 border-t border-border">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">Recent Performance</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {exercise.workouts[0].sets.slice(0, 3).map((set: any, index: number) => (
+                          <div key={index} className="text-xs bg-secondary px-2 py-1 rounded">
+                            {set.weight}lbs × {set.reps}
+                          </div>
+                        ))}
+                        {exercise.workouts[0].sets.length > 3 && (
+                          <div className="text-xs text-muted-foreground">
+                            +{exercise.workouts[0].sets.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
               </Card>
             );
           })
