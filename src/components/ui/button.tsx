@@ -21,7 +21,8 @@ const buttonVariants = cva(
         success: "bg-gradient-accent text-accent-foreground hover:shadow-accent shadow-soft",
         workout: "bg-primary text-primary-foreground hover:bg-primary-glow active:scale-95 shadow-soft font-semibold",
         set: "bg-card border-2 border-border text-card-foreground hover:border-primary hover:bg-primary/5 active:scale-98",
-        complete: "bg-success text-success-foreground hover:bg-success/90 animate-pulse-success"
+        complete: "bg-success text-success-foreground hover:bg-success/90 animate-pulse-success",
+        warning: "bg-gradient-warning text-warning-foreground hover:shadow-warning shadow-soft"
       },
       size: {
         default: "h-10 px-4 py-2",

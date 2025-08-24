@@ -93,16 +93,23 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+    <div className="min-h-screen bg-gradient-hero">
       <div className="container mx-auto px-4 pt-8 pb-20">
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">
-              Rep Logs
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Welcome back, {user.email?.split('@')[0]}!
-            </p>
+          <div className="flex items-center gap-4">
+            <img 
+              src="/lovable-uploads/81d4f049-e0fe-4f2e-8ccf-6e01d7148206.png" 
+              alt="Rep Logs Logo" 
+              className="w-16 h-16"
+            />
+            <div>
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                Rep Logs
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Welcome back, {user.email?.split('@')[0]}!
+              </p>
+            </div>
           </div>
           <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
             <LogOut className="w-4 h-4" />
