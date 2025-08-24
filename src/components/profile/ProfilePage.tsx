@@ -1,261 +1,387 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useDispatch, useSelector } from 'react-redux';
-import { User, UserCog, Mail, Users, LogOut, Eye } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { InviteFriend } from './InviteFriend';
-import { FriendsList } from './FriendsList';
-import { updateProfile, changePassword } from '@/store/slices/profileSlice';
-import { logoutUser } from '@/store/slices/authSlice';
-import { fetchFriends } from '@/store/slices/friendsSlice';
-import { RootState, AppDispatch } from '@/store';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { User, Mail, Calendar, Users, UserPlus } from 'lucide-react';
+
+interface Profile {
+  id: string;
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Friend {
+  id: string;
+  user_id: string;
+  friend_user_id: string;
+  status: string;
+  created_at: string;
+  profile?: Profile;
+}
 
 export const ProfilePage: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
+  const { user, signOut } = useAuthContext();
   const { toast } = useToast();
-  const { user } = useSelector((state: RootState) => state.auth);
-  const { loading, error } = useSelector((state: RootState) => state.profile);
-  const { friends } = useSelector((state: RootState) => state.friends);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
 
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-  });
-
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  // Form states
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     if (user) {
-      dispatch(fetchFriends(user.id));
+      fetchProfile();
+      fetchFriends();
     }
-  }, [dispatch, user]);
+  }, [user]);
 
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await dispatch(updateProfile(profileForm)).unwrap();
-      toast({
-        title: 'Profile Updated',
-        description: 'Your profile has been updated successfully.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Update Failed',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: 'Password Mismatch',
-        description: 'New passwords do not match.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const fetchProfile = async () => {
+    if (!user) return;
 
     try {
-      await dispatch(changePassword({
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      })).unwrap();
-      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data) {
+        setProfile(data);
+        setDisplayName(data.display_name || '');
+        setUsername(data.username || '');
+      } else {
+        // Create profile if it doesn't exist
+        const newProfile = {
+          user_id: user.id,
+          username: user.email?.split('@')[0] || '',
+          display_name: user.email?.split('@')[0] || '',
+        };
+
+        const { data: createdProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        setProfile(createdProfile);
+        setDisplayName(createdProfile.display_name || '');
+        setUsername(createdProfile.username || '');
+      }
+    } catch (error: any) {
       toast({
-        title: 'Password Changed',
-        description: 'Your password has been updated successfully.',
+        title: "Error",
+        description: "Failed to load profile",
+        variant: "destructive",
       });
-      
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-    } catch (error) {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFriends = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('friends')
+        .select(`
+          *,
+          profiles!friends_friend_user_id_fkey (*)
+        `)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setFriends(data || []);
+    } catch (error: any) {
+      console.error('Error fetching friends:', error);
+    }
+  };
+
+  const updateProfile = async () => {
+    if (!user || !profile) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: displayName,
+          username: username,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
       toast({
-        title: 'Password Change Failed',
-        description: 'Failed to change password. Please check your current password.',
-        variant: 'destructive',
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+
+      fetchProfile();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
       });
     }
   };
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
+  const inviteFriend = async () => {
+    if (!user || !inviteEmail.trim()) return;
+
+    try {
+      // Check if user exists
+      const { data: targetProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('username', inviteEmail.trim())
+        .single();
+
+      if (profileError) {
+        toast({
+          title: "Error",
+          description: "User not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if already friends
+      const { data: existingFriend } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('friend_user_id', targetProfile.user_id)
+        .single();
+
+      if (existingFriend) {
+        toast({
+          title: "Info",
+          description: "Already friends with this user",
+        });
+        return;
+      }
+
+      // Add friend relationship
+      const { error } = await supabase
+        .from('friends')
+        .insert({
+          user_id: user.id,
+          friend_user_id: targetProfile.user_id,
+          status: 'accepted'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Friend added successfully!",
+      });
+
+      setInviteEmail('');
+      fetchFriends();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to add friend",
+        variant: "destructive",
+      });
+    }
   };
 
-  if (!user) return null;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <User className="w-12 h-12 text-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="container mx-auto p-4 max-w-4xl"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-primary">My Profile</h1>
-            <p className="text-muted-foreground">Manage your account and connections</p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            className="text-destructive hover:text-destructive"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
+      <Card>
+        <CardHeader className="text-center">
+          <Avatar className="w-24 h-24 mx-auto mb-4">
+            <AvatarImage src={profile?.avatar_url || ''} />
+            <AvatarFallback className="text-lg">
+              {(profile?.display_name || user?.email || 'U')[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <CardTitle className="text-2xl">{profile?.display_name || 'Unknown User'}</CardTitle>
+          <CardDescription>@{profile?.username || 'username'}</CardDescription>
+        </CardHeader>
+      </Card>
 
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="friends">Friends</TabsTrigger>
+          <TabsTrigger value="invite">Invite</TabsTrigger>
+        </TabsList>
 
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
-            <TabsTrigger value="profile" className="flex items-center gap-2">
-              <UserCog className="w-4 h-4" />
-              Profile
-            </TabsTrigger>
-            <TabsTrigger value="friends" className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Friends
-            </TabsTrigger>
-            <TabsTrigger value="invite" className="flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              Invite
-            </TabsTrigger>
-          </TabsList>
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Information</CardTitle>
+              <CardDescription>Update your profile information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter display name"
+                />
+              </div>
+              <Button onClick={updateProfile} className="w-full">
+                Update Profile
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* Profile Tab */}
-          <TabsContent value="profile" className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Account Information
-                  </CardTitle>
-                  <CardDescription>
-                    Update your personal information
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleProfileUpdate} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        value={profileForm.name}
-                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={profileForm.email}
-                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? 'Updating...' : 'Update Profile'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.div>
+        <TabsContent value="friends">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                My Workout Buddies ({friends.length})
+              </CardTitle>
+              <CardDescription>
+                Connect with friends to share your fitness journey
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {friends.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No friends yet</p>
+                  <p className="text-sm text-muted-foreground">Invite friends to track workouts together!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <AnimatePresence>
+                    {friends.map((friend) => (
+                      <motion.div
+                        key={friend.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="flex items-center space-x-4 p-4 rounded-lg border"
+                      >
+                        <Avatar>
+                          <AvatarImage src={friend.profile?.avatar_url || ''} />
+                          <AvatarFallback>
+                            {(friend.profile?.display_name || 'U')[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <h4 className="font-medium">{friend.profile?.display_name || 'Unknown'}</h4>
+                          <p className="text-sm text-muted-foreground">@{friend.profile?.username}</p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">
+                          {friend.status}
+                        </Badge>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>
-                    Update your password to keep your account secure
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handlePasswordChange} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input
-                        id="currentPassword"
-                        type="password"
-                        value={passwordForm.currentPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        value={passwordForm.newPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={passwordForm.confirmPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? 'Changing...' : 'Change Password'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </TabsContent>
+        <TabsContent value="invite">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5" />
+                Invite Workout Buddy
+              </CardTitle>
+              <CardDescription>
+                Add friends by their username to track workouts together
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="inviteEmail">Username</Label>
+                <Input
+                  id="inviteEmail"
+                  type="text"
+                  placeholder="Enter username"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={inviteFriend} 
+                className="w-full"
+                disabled={!inviteEmail.trim()}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Friend
+              </Button>
 
-          {/* Friends Tab */}
-          <TabsContent value="friends">
-            <FriendsList />
-          </TabsContent>
-
-          {/* Invite Tab */}
-          <TabsContent value="invite">
-            <InviteFriend />
-          </TabsContent>
-        </Tabs>
-      </motion.div>
-    </div>
+              <div className="mt-6 p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">How it works:</h4>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Enter your friend's username</li>
+                  <li>They'll be added to your friends list</li>
+                  <li>Share workouts and motivate each other!</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </motion.div>
   );
 };
