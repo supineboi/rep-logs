@@ -1,6 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WorkoutLogger } from "@/components/WorkoutLogger";
@@ -8,11 +7,13 @@ import { WorkoutHistory } from "@/components/WorkoutHistory";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { Navigation } from "@/components/Navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { Dumbbell, TrendingUp, History, LogOut } from "lucide-react";
+import { ProfilePage } from "@/components/profile/ProfilePage";
+import { Dumbbell, LogOut } from "lucide-react";
 
 const Index = () => {
   const { user, loading, signOut } = useAuthContext();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('workout');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -40,9 +41,60 @@ const Index = () => {
     return null;
   }
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'workout':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Workout</CardTitle>
+              <CardDescription>
+                Track your sets and reps in real-time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WorkoutLogger />
+            </CardContent>
+          </Card>
+        );
+      case 'history':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Workout History</CardTitle>
+              <CardDescription>
+                Review your past workouts and progress
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WorkoutHistory />
+            </CardContent>
+          </Card>
+        );
+      case 'progress':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Progress Tracker</CardTitle>
+              <CardDescription>
+                Visualize your strength gains over time
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProgressTracker />
+            </CardContent>
+          </Card>
+        );
+      case 'profile':
+        return <ProfilePage />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10">
-      <div className="container mx-auto px-4 pt-8 pb-8">
+      <div className="container mx-auto px-4 pt-8 pb-20">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">
@@ -58,65 +110,12 @@ const Index = () => {
           </Button>
         </div>
 
-        <Tabs defaultValue="workout" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="workout" className="flex items-center gap-2">
-              <Dumbbell className="w-4 h-4" />
-              Workout
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="w-4 h-4" />
-              History
-            </TabsTrigger>
-            <TabsTrigger value="progress" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Progress
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="workout" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Current Workout</CardTitle>
-                <CardDescription>
-                  Track your sets and reps in real-time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <WorkoutLogger />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="history" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Workout History</CardTitle>
-                <CardDescription>
-                  Review your past workouts and progress
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <WorkoutHistory />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="progress" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Progress Tracker</CardTitle>
-                <CardDescription>
-                  Visualize your strength gains over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProgressTracker />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <div className="mt-6">
+          {renderContent()}
+        </div>
       </div>
+      
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };
