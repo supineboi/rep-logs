@@ -98,7 +98,7 @@ const Index = () => {
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
             <img 
-              src="/lovable-uploads/81d4f049-e0fe-4f2e-8ccf-6e01d7148206.png" 
+              src="/images/gym-tracker-logo.png" 
               alt="Rep Logs Logo" 
               className="w-16 h-16"
             />
