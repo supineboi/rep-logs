@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSelector, useDispatch } from 'react-redux';
-import { Users, User, Eye, Calendar, TrendingUp, ChevronRight } from 'lucide-react';
+import { Users, Eye, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { FriendProgress } from './FriendProgress';
-import { RootState, AppDispatch } from '@/store';
-import { fetchFriendWorkouts } from '@/store/slices/workoutSlice';
+import { useFriends } from '@/hooks/useFriends';
 
 export const FriendsList: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { friends } = useSelector((state: RootState) => state.friends);
+  const { friends, loading } = useFriends();
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
 
   const handleViewProgress = (friendId: string) => {
     setSelectedFriend(friendId);
-    dispatch(fetchFriendWorkouts(friendId));
+    // TODO: Implement fetching friend workouts
   };
 
   if (selectedFriend) {
@@ -27,6 +24,17 @@ export const FriendsList: React.FC = () => {
         friend={friend!} 
         onBack={() => setSelectedFriend(null)} 
       />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-muted rounded w-3/4 mx-auto"></div>
+          <div className="h-4 bg-muted rounded w-1/2 mx-auto"></div>
+        </div>
+      </div>
     );
   }
 
@@ -73,12 +81,12 @@ export const FriendsList: React.FC = () => {
                           <div className="flex items-center gap-3">
                             <Avatar className="w-12 h-12">
                               <AvatarFallback className="bg-primary text-primary-foreground">
-                                {friend.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                {friend.display_name?.split(' ').map(n => n[0]).join('').toUpperCase() || friend.username?.[0]?.toUpperCase() || 'U'}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <h4 className="font-semibold">{friend.name}</h4>
-                              <p className="text-sm text-muted-foreground">{friend.email}</p>
+                              <h4 className="font-semibold">{friend.display_name || friend.username}</h4>
+                              <p className="text-sm text-muted-foreground">@{friend.username}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge 
                                   variant={friend.status === 'accepted' ? 'default' : 'secondary'}
@@ -87,7 +95,7 @@ export const FriendsList: React.FC = () => {
                                   {friend.status === 'accepted' ? 'Connected' : 'Pending'}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground">
-                                  Since {new Date(friend.connectedAt).toLocaleDateString()}
+                                  Since {new Date(friend.created_at).toLocaleDateString()}
                                 </span>
                               </div>
                             </div>
@@ -130,13 +138,13 @@ export const FriendsList: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-primary">
-                    {friends.filter(f => f.status === 'accepted').length}
+                    {friends.length}
                   </div>
                   <div className="text-sm text-muted-foreground">Connected Friends</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-accent">
-                    {friends.filter(f => f.status === 'pending').length}
+                    0
                   </div>
                   <div className="text-sm text-muted-foreground">Pending Invites</div>
                 </div>

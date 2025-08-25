@@ -8,6 +8,7 @@ import { ProgressTracker } from "@/components/ProgressTracker";
 import { Navigation } from "@/components/Navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { ProfilePage } from "@/components/profile/ProfilePage";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Dumbbell, LogOut } from "lucide-react";
 
 const Index = () => {
@@ -111,10 +112,13 @@ const Index = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button variant="outline" onClick={handleSignOut} className="flex items-center gap-2">
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6">

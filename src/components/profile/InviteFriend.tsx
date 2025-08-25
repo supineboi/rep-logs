@@ -1,41 +1,40 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useDispatch, useSelector } from 'react-redux';
-import { Mail, Send, CheckCircle, Clock } from 'lucide-react';
+import { Mail, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { inviteFriend } from '@/store/slices/friendsSlice';
-import { RootState, AppDispatch } from '@/store';
 import { useToast } from '@/hooks/use-toast';
+import { useFriends } from '@/hooks/useFriends';
 
 export const InviteFriend: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const { toast } = useToast();
-  const { pendingInvites, loading } = useSelector((state: RootState) => state.friends);
-  
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { sendFriendRequest } = useFriends();
+  const { toast } = useToast();
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email.trim()) return;
 
+    setLoading(true);
     try {
-      await dispatch(inviteFriend(email)).unwrap();
+      const result = await sendFriendRequest(email.trim());
       toast({
-        title: 'Invite Sent!',
-        description: `Invitation sent to ${email}`,
+        title: 'Success!',
+        description: result.message,
       });
       setEmail('');
     } catch (error) {
       toast({
-        title: 'Failed to Send Invite',
-        description: 'Please try again later.',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to send invitation. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,55 +84,6 @@ export const InviteFriend: React.FC = () => {
         </Card>
       </motion.div>
 
-      {/* Pending Invites */}
-      {pendingInvites.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Pending Invitations
-              </CardTitle>
-              <CardDescription>
-                Invitations waiting for response
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {pendingInvites.map((invite, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-warning/20 rounded-full flex items-center justify-center">
-                        <Mail className="w-4 h-4 text-warning" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{invite.email}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Sent {new Date(invite.sentAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="bg-warning/20 text-warning">
-                      Pending
-                    </Badge>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
       {/* How it Works */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -155,7 +105,7 @@ export const InviteFriend: React.FC = () => {
               <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mt-0.5">
                 2
               </div>
-              <p className="text-sm">They'll receive a link to join GymTracker</p>
+              <p className="text-sm">They'll receive a link to join Rep Logs</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mt-0.5">

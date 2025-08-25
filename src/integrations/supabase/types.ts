@@ -46,6 +46,36 @@ export type Database = {
           },
         ]
       }
+      friend_requests: {
+        Row: {
+          created_at: string
+          from_user_id: string
+          id: string
+          status: string
+          to_email: string | null
+          to_user_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id: string
+          id?: string
+          status?: string
+          to_email?: string | null
+          to_user_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          status?: string
+          to_email?: string | null
+          to_user_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       friends: {
         Row: {
           created_at: string | null
@@ -66,6 +96,42 @@ export type Database = {
           friend_user_id?: string
           id?: string
           status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

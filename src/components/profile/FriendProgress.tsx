@@ -10,7 +10,14 @@ import { RootState } from '@/store';
 import { Friend } from '@/store/slices/friendsSlice';
 
 interface FriendProgressProps {
-  friend: Friend;
+  friend: {
+    id: string;
+    display_name: string;
+    username: string;
+    avatar_url?: string;
+    status: string;
+    created_at: string;
+  };
   onBack: () => void;
 }
 
@@ -40,12 +47,12 @@ export const FriendProgress: React.FC<FriendProgressProps> = ({ friend, onBack }
         <div className="flex items-center gap-3">
           <Avatar className="w-12 h-12">
             <AvatarFallback className="bg-primary text-primary-foreground">
-              {friend.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+              {friend.display_name?.split(' ').map(n => n[0]).join('').toUpperCase() || friend.username?.[0]?.toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-2xl font-bold">{friend.name}'s Progress</h2>
-            <p className="text-muted-foreground">Workout buddy since {new Date(friend.connectedAt).toLocaleDateString()}</p>
+            <h2 className="text-2xl font-bold">{friend.display_name || friend.username}'s Progress</h2>
+            <p className="text-muted-foreground">Workout buddy since {new Date(friend.created_at).toLocaleDateString()}</p>
           </div>
         </div>
       </div>
